@@ -22,17 +22,17 @@ conn = MySQLdb.connect(host="wos2.cvirc91pe37a.us-east-1.rds.amazonaws.com", use
 cursor = conn.cursor()
 
 tic.go("Preparing temporary contributors table...")
-cursor.execute("CREATE TEMPORARY TABLE temp_contributors AS (SELECT wos_id,wos_standard_name from contributors);ALTER TABLE temp_contributors ADD ID INT PRIMARY KEY AUTO_INCREMENT;")
+cursor.execute("CREATE TEMPORARY TABLE temp_contributors AS (SELECT wos_id,wos_standard from contributors);ALTER TABLE temp_contributors ADD ID INT PRIMARY KEY AUTO_INCREMENT;")
 tic.stop()
 
 batch=0
 step=1000000
 filename='wos_author.tsv'
 with open(filename,'w') as infile:
-    infile.write("wos_id\twos_standard_name\n")
+    infile.write("wos_id\twos_standard\n")
     while True:
         tic.go('Downloading Batch {} (millions) ... '.format(batch+1))
-        nrows=cursor.execute("select wos_id,wos_standard_name from temp_contributors where ID>{} and ID<={};".format(batch*step,(batch+1)*step))
+        nrows=cursor.execute("select wos_id,wos_standard from temp_contributors where ID>{} and ID<={};".format(batch*step,(batch+1)*step))
         if nrows==0:
             break
         for row in cursor:
