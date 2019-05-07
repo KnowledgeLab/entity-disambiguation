@@ -17,28 +17,25 @@ class Stopwatch:
 
 tic=Stopwatch()
 
-print('Start downloading citation data...')
+print('Connecting to database...')
 conn = MySQLdb.connect(host="wos2.cvirc91pe37a.us-east-1.rds.amazonaws.com", user = '', passwd = '', db = "wos2")
 cursor = conn.cursor()
+
+tic.go("Preparing temporary refs table...")
+cursor.execute("CREATE TEMPORARY TABLE temp_refs AS (SELECT wos_id,uid from refs);ALTER TABLE temp_refs ADD ID INT PRIMARY KEY AUTO_INCREMENT;")
+tic.stop()
 
 batch=0
 step=1000000
 filename='wos_refs.tsv'
 with open(filename,'w') as infile:
     infile.write("wos_id\tuid\n")
-
-tic.go("Preparing temporary refs table...")
-cursor.execute("CREATE TEMPORARY TABLE temp_refs AS (SELECT wos_id,uid from refs);ALTER TABLE temp_refs ADD ID INT PRIMARY KEY AUTO_INCREMENT;")
-tic.stop()
-
-step=1000000
-while True:
-    tic.go('Downloading Batch {} (millions) ... '.format(batch+1))
-    nrows=cursor.execute("select wos_id,uid from temp_refs where ID>{} and ID<={};".format(batch*step,(batch+1)*step))
-    if nrows==0:
-        break
-    with open(filename,'a') as infile:
+    while True:
+        tic.go('Downloading Batch {} (millions) ... '.format(batch+1))
+        nrows=cursor.execute("select wos_id,uid from temp_refs where ID>{} and ID<={};".format(batch*step,(batch+1)*step))
+        if nrows==0:
+            break
         for row in cursor:
             infile.write("{}\t{}\n".format(row[0],row[1]))   
-    tic.stop('Downloaded')        
-    batch+=1
+        tic.stop('Downloaded')        
+        batch+=1
