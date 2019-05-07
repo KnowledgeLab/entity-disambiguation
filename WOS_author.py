@@ -25,15 +25,15 @@ batch=0
 step=1000000
 filename='wos_author.tsv'
 with open(filename,'w') as infile:
-    infile.write("wos_id\tfirst_name\tlast_name\n")
+    infile.write("wos_id\twos_standard_name\n")
 
 while True:
     tic.go('Batch {} (millions) downloading... '.format(batch+1))
-    nrows=cursor.execute("select wos_id,first_name,last_name from contributors limit {},{};".format(batch*step,step))
+    nrows=cursor.execute("select wos_id,wos_standard_name from contributors limit {},{};".format(batch*step,step))
     if nrows==0:
         break
     with open(filename,'a') as infile:
         for row in cursor:
-            infile.write("{}\t{}\t{}\n".format(row[0],row[1],row[2]))   
+            infile.write("{}\t{}\n".format(row[0],row[1]))   
     tic.stop('Downloaded')        
     batch+=1
