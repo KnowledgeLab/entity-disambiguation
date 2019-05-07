@@ -4,7 +4,7 @@
 TBA
 
 ## Requirements
-Python3
+Python3  
 MySQLdb
 
 ## Input Data
