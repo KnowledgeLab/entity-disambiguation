@@ -4,7 +4,8 @@
 TBA
 
 ## Requirements
-Python3 
+Python3
+MySQLdb
 
 ## Input Data
 1. Author list: a tsv file; each row corresponds to a paper with fields wos_id wos_standard_name1 wos_standard_name2 ...
