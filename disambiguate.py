@@ -50,9 +50,8 @@ def sx(i,j):
 
 def link(e):
     i,j=e
-    x=np.array([[sa(i,j),sr(i,j),sc(i,j),sx(i,j)]])
-    y=clt.predict(x)
-    if y==1:
+    y=sum([sa(i,j),sr(i,j),sc(i,j),sx(i,j)])
+    if y>0:
         return e
     else:
         return None
@@ -60,7 +59,7 @@ def link(e):
     
 def disambiguate(papers):
     # iterate over all possible pairs and construct data
-    with Pool(cpu_count()-1) as pool:
+    with Pool(2) as pool:
         G = nx.Graph()
         G.add_nodes_from(papers)
         for e in pool.imap_unordered(link, combinations(papers, 2), 100):
@@ -113,8 +112,8 @@ with open('author_candidates_clean.tsv') as f:
             candidates[line[0]] = [int(i) for i in line[1:]]
 tic.stop('{} authors. Elapsed'.format(len(candidates)))
 
-with open('AllEmailsTrainedGradientBoostingClassifier.sav', 'rb') as f:
-    clt=pickle.load(f)
+# with open('AllEmailsTrainedGradientBoostingClassifier.sav', 'rb') as f:
+#     clt=pickle.load(f)
 
 with open('disambiguated_authors.tsv', 'w') as outfile:
     for k in candidates:
