@@ -3,6 +3,7 @@ import pickle
 import networkx as nx
 from itertools import combinations
 import numpy as np
+from multiprocessing import Pool, cpu_count
 
 class Stopwatch:
     start_time=None
@@ -23,19 +24,21 @@ tic=Stopwatch()
 # similarity functions
 def sa(i,j):
     if (i in A) and (j in A):
-        return (len(set(A[i]).intersection(A[j]))-1)/(min(len(A[i]),len(A[j]))-1)# remove the author that tie these two papers together
+        if (len(A[i])==1) or (len(A[j])==1):
+            return 0
+        return (len(A[i].intersection(A[j]))-1)/(min(len(A[i]),len(A[j]))-1)
     else:
         return 0
 
 def sr(i,j): 
     if (i in R) and (j in R):
-        return len(set(R[i]).intersection(R[j]))/min(len(R[i]),len(R[j]))
+        return len(R[i].intersection(R[j]))/min(len(R[i]),len(R[j]))
     else:
         return 0
 
 def sc(i,j): 
     if (i in C) and (j in C):
-        return len(set(C[i]).intersection(C[j]))/min(len(C[i]),len(C[j]))
+        return len(C[i].intersection(C[j]))/min(len(C[i]),len(C[j]))
     else:
         return 0
 
@@ -45,15 +48,24 @@ def sx(i,j):
     else:
         return 0
 
+def link(e):
+    i,j=e
+    x=np.array([[sa(i,j),sr(i,j),sc(i,j),sx(i,j)]])
+    y=clt.predict(x)
+    if y==1:
+        return e
+    else:
+        return None
+
+    
 def disambiguate(papers):
     # iterate over all possible pairs and construct data
-    X=np.array([[sa(i,j),sr(i,j),sc(i,j),sx(i,j),i,j] for i,j in combinations(sorted(papers), 2)])
-    # predict linking probability
-    y=clt.predict(X[:,:-2])
-    # connect nodes
-    G = nx.Graph()
-    G.add_nodes_from(papers)
-    G.add_edges_from(X[:,-2:][y==1].astype(int))
+    with Pool(cpu_count()-1) as pool:
+        G = nx.Graph()
+        G.add_nodes_from(papers)
+        for e in pool.imap_unordered(link, combinations(papers, 2), 100):
+            if e is not None:
+                G.add_edges_from([e])
     # export data of component
     res = [(n,c) for n,c in enumerate(nx.connected_components(G))]
     return res
@@ -65,7 +77,7 @@ C={}
 with open('citation_list.tsv') as f:
     for line in f:
         line=list(map(int,line.split('\t')))
-        C[line[0]] = line[1:]
+        C[line[0]] = set(line[1:])
 tic.stop('{} rows. Elapsed'.format(len(C)))
             
 # reference list
@@ -74,7 +86,7 @@ R={}
 with open('ref_list.tsv') as f:
     for line in f:
         line=list(map(int,line.split('\t')))
-        R[line[0]] = line[1:]
+        R[line[0]] = set(line[1:])
 tic.stop('{} rows. Elapsed'.format(len(R)))
 
 #author list
@@ -83,16 +95,21 @@ A={}
 with open('author_list.tsv') as f:
     for line in f:
         line=line.strip().split('\t')
-        A[line[0]] = [i.lower() for i in line[1:]]
+        A[line[0]] = set([i.lower() for i in line[1:]])
 tic.stop('{} rows. Elapsed'.format(len(A)))
 
 #author list
 tic.go('Loading authors to be resolved...')
+sample=set()
+with open('disambiguate_candidates.txt') as f:
+    for l in f:
+        sample.add(l.strip())
+    
 candidates={}
 with open('author_candidates_clean.tsv') as f:
     for l in f:
         line=l.strip().split('\t')
-        if len(line)>1000:
+        if line[0] in sample:
             candidates[line[0]] = [int(i) for i in line[1:]]
 tic.stop('{} authors. Elapsed'.format(len(candidates)))
 
