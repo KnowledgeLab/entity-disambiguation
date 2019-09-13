@@ -8,6 +8,7 @@ from scipy.sparse.csgraph import connected_components
 from collections import defaultdict
 
 DATA_DIR=''
+THRESHOLD=1
 
 class Stopwatch:
     start_time=None
@@ -55,19 +56,16 @@ def sx(i,j):
 def link(e):
     i,j=e
     y=sum([sa(i,j),sr(i,j),sc(i,j),sx(i,j)])
-    if y>1:
-        return e
+    if y>THRESHOLD:
+        return True
     else:
-        return None
+        return False
     
-def disambiguate(papers):
+def disambiguate(author):
     # iterate over all possible pairs and construct graph
+    papers=candidates[author]
     paper2id=dict(((p,i) for i,p in enumerate(papers)))
-    G=[]
-    with Pool(4) as pool:
-        for e in pool.imap_unordered(link, combinations(papers, 2), 100):
-            if e is not None:
-                G.append((paper2id[e[0]],paper2id[e[1]]))
+    G=[(paper2id[e[0]],paper2id[e[1]]) for e in combinations(papers, 2) if link(e)]
     if len(G)>0:
         G=csr_matrix((np.ones(len(G)), zip(*G)), shape=[len(papers)]*2)
     else:
@@ -75,8 +73,7 @@ def disambiguate(papers):
     n_components, labels = connected_components(csgraph=G, directed=False)
     res=defaultdict(list)
     for i,c in enumerate(labels):
-        res[c].append(papers[i])
-    res=res.values()
+        res[author+'_'+str(c)].append(papers[i])
     return res
 
 # citation list
@@ -135,13 +132,12 @@ tic.stop('{} authors. Elapsed'.format(len(candidates)))
 #     clt=pickle.load(f)
 
 with open('disambiguated_authors.tsv', 'a+') as outfile:
-    for k in list(candidates.keys())[:20]:
-        print('Resolving {}'.format(k), flush=True)
-        res=disambiguate(candidates[k])
-        printout=''
-        for i,c in enumerate(res):
-            printout+='{}_{}'.format(k,i)
-            for j in c:
-                printout+='\t{}'.format(j)
-            printout+='\n'
-        outfile.write(printout)
+    with Pool(cpu_count()-1) as pool:
+        for res in pool.imap_unordered(disambiguate, candidates.keys(), 100):
+            printout=''
+            for k in res:
+                printout+=k
+                for j in res[k]:
+                    printout+='\t{}'.format(j)
+                printout+='\n'
+            outfile.write(printout)
