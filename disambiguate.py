@@ -8,7 +8,7 @@ from scipy.sparse.csgraph import connected_components
 from collections import defaultdict
 
 DATA_DIR=''
-THRESHOLD=1
+THRESHOLD=2
 
 class Stopwatch:
     start_time=None
@@ -133,7 +133,9 @@ tic.stop('{} authors. Elapsed'.format(len(candidates)))
 
 with open('disambiguated_authors.tsv', 'a+') as outfile:
     with Pool(cpu_count()-1) as pool:
-        for res in pool.imap_unordered(disambiguate, candidates.keys(), 100):
+        for i,res in enumerate(pool.imap_unordered(disambiguate, candidates.keys(), 100)):
+            if i%1000==0:
+                print("{}/{} authors processed.".format(i,len(candidates)))
             printout=''
             for k in res:
                 printout+=k
