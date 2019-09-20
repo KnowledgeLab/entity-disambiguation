@@ -135,7 +135,7 @@ with open('disambiguated_authors.tsv', 'a+') as outfile:
     with Pool(cpu_count()-1) as pool:
         for i,res in enumerate(pool.imap_unordered(disambiguate, candidates.keys(), 100)):
             if i%1000==0:
-                print("{}/{} authors processed.".format(i,len(candidates)))
+                print("{}/{} authors processed.".format(i,len(candidates)),flush=True)
             printout=''
             for k in res:
                 printout+=k
